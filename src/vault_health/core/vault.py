@@ -16,6 +16,7 @@ class VaultFile:
     content: str
     wikilinks: list[str] = field(default_factory=list)
     inbound_links: list[str] = field(default_factory=list)
+    broken_links: list[str] = field(default_factory=list)
     frontmatter: dict[str, str] = field(default_factory=dict)
     word_count: int = 0
     line_count: int = 0
@@ -200,6 +201,7 @@ def scan(root: str, max_files: int | None = None) -> Vault:
 
             if not matched:
                 vault.broken_links += 1
+                vf.broken_links.append(link)
 
     vault.total_wikilinks = sum(len(vf.wikilinks) for vf in vault.files.values())
 

@@ -3,6 +3,8 @@
 Usage:
     vh --path <path>
     vh --path <path> --json
+    vh broken --path <path>
+    vh orphan --path <path>
 """
 
 from __future__ import annotations
@@ -12,7 +14,10 @@ import os as _os
 import typer
 
 from ..core.vault import scan as scan_vault
+from ..engine import broken as broken_engine
 from ..engine import depth
+from ..engine import orphan as orphan_engine
+from ..output.reports import print_broken_report, print_orphan_report
 from ..output.terminal import print_report
 
 app = typer.Typer(
@@ -20,6 +25,11 @@ app = typer.Typer(
     help="Epistemic Calculus CLI — measure your knowledge vault health",
     no_args_is_help=True,
 )
+
+
+def _resolve_path(path: str) -> str:
+    resolved = _os.path.expanduser(path)
+    return _os.path.abspath(resolved)
 
 
 @app.command()
@@ -36,10 +46,8 @@ def scan(
         False, "--json", "-j", help="Output as JSON instead of terminal",
     ),
 ) -> None:
-    """Scan a vault and produce a health report."""
-    resolved_path = _os.path.expanduser(path)
-    resolved_path = _os.path.abspath(resolved_path)
-
+    """Scan a vault and produce a depth health report."""
+    resolved_path = _resolve_path(path)
     vault = scan_vault(resolved_path)
     report = depth.analyze(vault)
 
@@ -61,6 +69,42 @@ def scan(
         print(output)
     else:
         print_report(report)
+
+
+@app.command()
+def broken(
+    path: str = typer.Option(
+        ..., "--path", "-p",
+        help="Path to the vault directory",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+    ),
+) -> None:
+    """Report broken wikilinks in the vault."""
+    resolved_path = _resolve_path(path)
+    vault = scan_vault(resolved_path)
+    report_obj = broken_engine.analyze(vault)
+    print_broken_report(report_obj)
+
+
+@app.command()
+def orphan(
+    path: str = typer.Option(
+        ..., "--path", "-p",
+        help="Path to the vault directory",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+    ),
+) -> None:
+    """Report orphan files (zero inbound links) in the vault."""
+    resolved_path = _resolve_path(path)
+    vault = scan_vault(resolved_path)
+    report_obj = orphan_engine.analyze(vault)
+    print_orphan_report(report_obj)
 
 
 if __name__ == "__main__":
