@@ -1,12 +1,11 @@
 """Vault scanner — walks directory tree, parses frontmatter, builds link graph."""
 
 from __future__ import annotations
-import os
-import re
+
 import fnmatch
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -72,9 +71,9 @@ def _normalise_link(link: str) -> str:
     return link.lower()
 
 
-def scan(root: str, max_files: Optional[int] = None) -> Vault:
+def scan(root: str, max_files: int | None = None) -> Vault:
     """Scan a vault directory and build the link graph.
-    
+
     Args:
         root: Path to vault directory
         max_files: Optional limit for testing (speeds up dev)
@@ -84,21 +83,21 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
         raise NotADirectoryError(f"Vault path does not exist: {root_path}")
 
     vault = Vault(root=str(root_path))
-    
+
     # Phase 1: collect all markdown files
     collected = 0
     for file_path in root_path.rglob('*.md'):
         rel = str(file_path.relative_to(root_path))
         if _should_skip(rel):
             continue
-        
+
         try:
             content = file_path.read_text(encoding='utf-8', errors='ignore')
         except Exception:
             continue
-        
+
         rel_normalised = rel.replace('\\', '/')
-        
+
         vf = VaultFile(
             path=str(file_path),
             relative_path=rel_normalised,
@@ -107,20 +106,20 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
             word_count=len(content.split()),
             line_count=content.count('\n') + 1,
         )
-        
+
         # Extract wikilinks
         for m in WIKILINK_RE.finditer(content):
             link = m.group(1).strip()
             if link not in vf.wikilinks:
                 vf.wikilinks.append(link)
-        
+
         vault.files[rel_normalised] = vf
         collected += 1
         if max_files and collected >= max_files:
             break
-    
+
     vault.total_files = len(vault.files)
-    
+
     # Phase 2: build O(1) lookup maps
     # Map: stem.lower() -> list of relative paths
     stem_map: dict[str, list[str]] = {}
@@ -128,16 +127,16 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
     alias_map: dict[str, list[str]] = {}
     # Map: stem without spaces/dashes -> list of relative paths (fuzzy)
     fuzzy_map: dict[str, list[str]] = {}
-    
+
     for rel_path, vf in vault.files.items():
         stem = Path(rel_path).stem
         stem_lower = stem.lower()
         stem_map.setdefault(stem_lower, []).append(rel_path)
-        
+
         # Fuzzy key: remove spaces and hyphens for approximate matching
         fuzzy_key = re.sub(r'[\s\-_]', '', stem_lower)
         fuzzy_map.setdefault(fuzzy_key, []).append(rel_path)
-        
+
         # Collect aliases from frontmatter
         aliases_raw = vf.frontmatter.get('aliases', '')
         if aliases_raw:
@@ -146,12 +145,12 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                 if alias:
                     alias_lower = alias.lower()
                     alias_map.setdefault(alias_lower, []).append(rel_path)
-    
+
     # Phase 3: resolve wikilinks using O(1) lookup
     for rel_path, vf in vault.files.items():
         for link in vf.wikilinks:
             link_normalised = _normalise_link(link)
-            
+
             # 1. Direct stem match
             if link_normalised in stem_map:
                 for tgt in stem_map[link_normalised]:
@@ -159,7 +158,7 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                     if tgt_vf and rel_path not in tgt_vf.inbound_links:
                         tgt_vf.inbound_links.append(rel_path)
                 continue
-            
+
             # 2. Alias match
             if link_normalised in alias_map:
                 for tgt in alias_map[link_normalised]:
@@ -167,7 +166,7 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                     if tgt_vf and rel_path not in tgt_vf.inbound_links:
                         tgt_vf.inbound_links.append(rel_path)
                 continue
-            
+
             # 3. Fuzzy match (without spaces/dashes)
             fuzzy_key = re.sub(r'[\s\-_]', '', link_normalised)
             if fuzzy_key in fuzzy_map:
@@ -176,7 +175,7 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                     if tgt_vf and rel_path not in tgt_vf.inbound_links:
                         tgt_vf.inbound_links.append(rel_path)
                 continue
-            
+
             # 4. Substring fuzzy match (link is substring of stem, or vice versa)
             matched = False
             for stem_lower, tgts in stem_map.items():
@@ -187,7 +186,7 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                             tgt_vf.inbound_links.append(rel_path)
                     matched = True
                     break
-            
+
             if not matched:
                 # Check aliases with substring
                 for alias_lower, tgts in alias_map.items():
@@ -198,10 +197,10 @@ def scan(root: str, max_files: Optional[int] = None) -> Vault:
                                 tgt_vf.inbound_links.append(rel_path)
                         matched = True
                         break
-            
+
             if not matched:
                 vault.broken_links += 1
-    
+
     vault.total_wikilinks = sum(len(vf.wikilinks) for vf in vault.files.values())
-    
+
     return vault

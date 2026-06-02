@@ -1,14 +1,16 @@
 """vault-health CLI — Tracer Bullet implementation.
 
 Usage:
-    vault-health scan --path <path>
-    vault-health scan --path <path> --json
+    vh --path <path>
+    vh --path <path> --json
 """
 
 from __future__ import annotations
+
 import os as _os
 
 import typer
+
 from ..core.vault import scan as scan_vault
 from ..engine import depth
 from ..output.terminal import print_report
@@ -37,10 +39,10 @@ def scan(
     """Scan a vault and produce a health report."""
     resolved_path = _os.path.expanduser(path)
     resolved_path = _os.path.abspath(resolved_path)
-    
+
     vault = scan_vault(resolved_path)
     report = depth.analyze(vault)
-    
+
     if json:
         import json as json_mod
         output = json_mod.dumps({

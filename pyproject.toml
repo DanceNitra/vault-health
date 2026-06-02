@@ -42,7 +42,24 @@ python_version = "3.11"
 strict = true
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["typer", "rich.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "vault_health.cli.*"
+ignore_errors = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+]

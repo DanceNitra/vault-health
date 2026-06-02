@@ -1,6 +1,10 @@
 # vault-health
 
-Epistemic Calculus CLI — measure and improve your knowledge vault health.
+[![CI](https://github.com/DanceNitra/vault-health/actions/workflows/ci.yml/badge.svg)](https://github.com/DanceNitra/vault-health/actions/workflows/ci.yml)
+
+**Epistemic Calculus CLI** — measure and improve your knowledge vault health.
+
+Built as a Tracer Bullet from 4 software engineering books.
 
 ## Installation
 
@@ -12,10 +16,10 @@ pip install vault-health
 
 ```bash
 # Scan a vault and see health report
-vault-health scan --path ~/my-obsidian-vault/
+vh --path ~/my-obsidian-vault/
 
 # JSON output for piping
-vault-health scan --path ~/my-obsidian-vault/ --json
+vh --path ~/my-obsidian-vault/ --json
 ```
 
 ## Architecture
@@ -28,15 +32,25 @@ src/vault_health/
 └── output/      # Formatters (terminal, JSON)
 ```
 
+## Operators
+
+| Operator | Metric | Target |
+|----------|--------|--------|
+| 🟢 δ | Depth (avg words/file) | >60% deep |
+| 🔵 κ | Connectivity (links/file) | >5 avg |
+| 🟡 ρ | Recency (updated files) | <30d |
+| 🔴 β | Broken link ratio | <1% |
+| 🟣 λ | Orphan ratio | <1% |
+| 🟠 ω | Width (breadth/depth balance) | >40% |
+| ⚪ φ | Coherence (bridge quality) | >0.8 |
+
 ## Development
 
 ```bash
 uv sync --dev
 uv run pytest
-uv run vault-health scan --path ~/my-vault/
+vh --path ~/my-vault/
 ```
-
-## Books
 
 Built on principles from:
 - **The Pragmatic Programmer** — DRY, Tracer Bullets, Decoupling
