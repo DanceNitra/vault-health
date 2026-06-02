@@ -7,31 +7,35 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: uv sync --all-extras
-    
-    - name: Lint
-      run: uv run ruff check src/
-    
-    - name: Type check
-      run: uv run mypy src/
-    
-    - name: Test
-      run: uv run pytest
-    
-    - name: Build
-      run: uv build
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python pin ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check src/
+
+      - name: Type check (mypy)
+        run: uv run mypy src/
+
+      - name: Test (pytest)
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Install package
+        run: uv pip install -e .
+
+      - name: Smoke test — help
+        run: vh --help

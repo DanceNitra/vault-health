@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-vault-health = "vault_health.cli.main:app"
+vh = "vault_health.cli.main:app"
 
 [project.optional-dependencies]
 dev = [
