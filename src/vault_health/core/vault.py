@@ -20,6 +20,7 @@ class VaultFile:
     frontmatter: dict[str, str] = field(default_factory=dict)
     word_count: int = 0
     line_count: int = 0
+    mtime: float = 0.0  # modification timestamp
 
 
 @dataclass
@@ -106,6 +107,7 @@ def scan(root: str, max_files: int | None = None) -> Vault:
             frontmatter=_parse_frontmatter(content),
             word_count=len(content.split()),
             line_count=content.count('\n') + 1,
+            mtime=file_path.stat().st_mtime,
         )
 
         # Extract wikilinks
