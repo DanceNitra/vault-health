@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
+
 
 @dataclass
 class VaultFile:
@@ -55,13 +57,33 @@ def _parse_frontmatter(content: str) -> dict[str, str]:
     m = FRONTMATTER_RE.match(content)
     if not m:
         return {}
-    meta: dict[str, str] = {}
-    for line in m.group(1).split('\n'):
-        line = line.strip()
-        if ':' in line:
-            key, _, val = line.partition(':')
-            meta[key.strip().lower()] = val.strip().strip('"').strip("'")
-    return meta
+    try:
+        parsed = yaml.safe_load(m.group(1))
+        if not isinstance(parsed, dict):
+            return {}
+        # Flatten to dict[str, str]
+        result: dict[str, str] = {}
+        for key, val in parsed.items():
+            if val is None:
+                result[key.strip().lower()] = ''
+            elif isinstance(val, list):
+                result[key.strip().lower()] = '\n'.join(
+                    str(v).strip().lstrip('-').strip() for v in val
+                )
+            elif isinstance(val, str):
+                result[key.strip().lower()] = val.strip()
+            else:
+                result[key.strip().lower()] = str(val)
+        return result
+    except yaml.YAMLError:
+        # Fallback to line-by-line
+        meta: dict[str, str] = {}
+        for line in m.group(1).split('\n'):
+            line = line.strip()
+            if ':' in line and not line.startswith('-'):
+                key, _, val = line.partition(':')
+                meta[key.strip().lower()] = val.strip().strip('"').strip("'")
+        return meta
 
 
 def _normalise_link(link: str) -> str:
